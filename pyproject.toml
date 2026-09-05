@@ -10,6 +10,9 @@ dependencies = [
     "pydantic",
 ]
 
+[project.scripts]
+todomate-mcp = "todomate_mcp.server:main"
+
 [dependency-groups]
 dev = ["pytest"]
 

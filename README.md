@@ -25,3 +25,13 @@ uv run pytest
 ```
 
 Firebase 인증 테스트는 HTTP 응답을 mock으로 제공하므로 실제 계정이나 외부 API 접속이 필요하지 않습니다.
+
+## MCP server
+
+로컬 stdio 서버는 다음 명령으로 실행합니다.
+
+```sh
+uv run todomate-mcp
+```
+
+현재 서버는 연결과 tool 목록 조회만 지원하며 Todo tool은 아직 등록하지 않았습니다.
