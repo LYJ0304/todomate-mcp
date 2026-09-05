@@ -1,6 +1,6 @@
 # todomate-mcp
 
-Todomate MCP 서버 개발을 위한 최소 Python 프로젝트입니다. 아직 기능은 구현하지 않았습니다.
+Todomate MCP 서버 개발을 위한 Python 프로젝트입니다. Firebase 로그인과 메모리 내 토큰 갱신을 구현했으며, MCP 서버와 Todo 기능은 아직 구현하지 않았습니다.
 
 ## 개발 환경
 
@@ -24,4 +24,4 @@ uv sync
 uv run pytest
 ```
 
-현재 테스트가 없어 pytest는 종료 코드 5를 반환합니다.
+Firebase 인증 테스트는 HTTP 응답을 mock으로 제공하므로 실제 계정이나 외부 API 접속이 필요하지 않습니다.
