@@ -108,7 +108,7 @@ def main() -> None:
             )
 
     resource_server_url = environment.get(
-        "TODOMATE_MCP_PUBLIC_URL",
+        "TODOMATE_MCP_PUBLIC_URL", 
         f"http://{args.host}:{args.port}/mcp"
         )
 
@@ -118,8 +118,8 @@ def main() -> None:
         resource_server_url=resource_server_url,
     )
     server.run(
-        transport="streamable-http",
-        host=args.host,
-        port=args.port,
+        transport="streamable-http", 
+        host=args.host, 
+        port=args.port, 
         streamable_http_path="/mcp"
         )
