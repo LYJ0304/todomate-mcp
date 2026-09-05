@@ -72,6 +72,20 @@ def test_todo_tools_list_and_return_normalized_data():
     asyncio.run(run())
 
 
+def test_mcp_rejects_invalid_tool_inputs():
+    async def run():
+        async with Client(create_server(Adapter(), today=lambda: __import__("datetime").date(2026, 9, 5))) as client:
+            for name, arguments in [
+                ("get_todo", {"todo_id": ""}),
+                ("create_todo", {"content": ""}),
+                ("create_todo", {"content": "valid", "goal_id": ""}),
+                ("update_todo", {"todo_id": "one"}),
+                ("delete_todo", {"todo_id": ""}),
+            ]:
+                assert (await client.call_tool(name, arguments)).is_error is True
+    asyncio.run(run())
+
+
 def test_configured_adapter_signs_in_once_before_the_first_operation():
     async def run():
         calls = []

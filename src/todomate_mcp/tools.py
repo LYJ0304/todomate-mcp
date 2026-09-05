@@ -2,9 +2,11 @@
 
 from collections.abc import Callable
 from datetime import date, datetime
+from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from mcp.server.mcpserver import MCPServer
+from pydantic import Field
 
 from .todomate import TodoMateAdapter, TodoNotFoundError
 
@@ -28,34 +30,43 @@ def create_server(adapter: TodoMateAdapter | None, *, today: Callable[[], date] 
         return {"todos": [todo.model_dump(mode="json") for todo in await configured().list_todos(day or today())]}
 
     @mcp.tool(description="Get one of the authenticated user's todos by ID.")
-    async def get_todo(todo_id: str) -> dict:
+    async def get_todo(todo_id: Annotated[str, Field(min_length=1)]) -> dict:
         try:
             return (await configured().get_todo(todo_id)).model_dump(mode="json")
         except TodoNotFoundError:
             raise ValueError("Todo not found") from None
 
     @mcp.tool(description="Create a todo for the authenticated user. Date defaults to today in Asia/Seoul.")
-    async def create_todo(content: str, day: date | None = None, goal_id: str | None = None) -> dict:
+    async def create_todo(
+        content: Annotated[str, Field(min_length=1)],
+        day: date | None = None,
+        goal_id: Annotated[str | None, Field(min_length=1)] = None,
+    ) -> dict:
         return (await configured().create_todo(content, day or today(), goal_id)).model_dump(mode="json")
 
     @mcp.tool(description="Update provided fields of one authenticated user's todo.")
     async def update_todo(
-        todo_id: str, content: str | None = None, day: date | None = None, goal_id: str | None = None
+        todo_id: Annotated[str, Field(min_length=1)],
+        content: Annotated[str | None, Field(min_length=1)] = None,
+        day: date | None = None,
+        goal_id: Annotated[str | None, Field(min_length=1)] = None,
     ) -> dict:
         try:
+            if content is None and day is None and goal_id is None:
+                raise ValueError("At least one Todo field is required")
             return (await configured().update_todo(todo_id, content=content, day=day, goal_id=goal_id)).model_dump(mode="json")
         except TodoNotFoundError:
             raise ValueError("Todo not found") from None
 
     @mcp.tool(description="Mark one authenticated user's todo complete or incomplete.")
-    async def complete_todo(todo_id: str, completed: bool = True) -> dict:
+    async def complete_todo(todo_id: Annotated[str, Field(min_length=1)], completed: bool = True) -> dict:
         try:
             return (await configured().complete_todo(todo_id, completed)).model_dump(mode="json")
         except TodoNotFoundError:
             raise ValueError("Todo not found") from None
 
     @mcp.tool(description="Delete one authenticated user's todo by ID.")
-    async def delete_todo(todo_id: str) -> dict:
+    async def delete_todo(todo_id: Annotated[str, Field(min_length=1)]) -> dict:
         try:
             await configured().delete_todo(todo_id)
             return {"id": todo_id, "deleted": True}
