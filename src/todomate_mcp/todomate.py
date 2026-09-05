@@ -28,8 +28,10 @@ class TodoMateAdapter:
     async def get_todo(self, todo_id: str) -> Todo:
         return todo_from_document(await self._owned(todo_id), fallback_id=todo_id)
 
-    async def create_todo(self, content: str, day: date, goal_id: str) -> Todo:
-        content, goal_id = _required(content, "content"), _required(goal_id, "goal_id")
+    async def create_todo(self, content: str, day: date, goal_id: str | None = None) -> Todo:
+        content = _required(content, "content")
+        if goal_id is not None:
+            goal_id = _required(goal_id, "goal_id")
         uid, now = self._auth.uid, _now_millis()
         todo_id = f"{uid}{''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))}"
         return todo_from_document(await self._firestore.upsert_document(

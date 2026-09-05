@@ -34,4 +34,8 @@ def create_server(adapter: TodoMateAdapter | None, *, today: Callable[[], date] 
         except TodoNotFoundError:
             raise ValueError("Todo not found") from None
 
+    @mcp.tool(description="Create a todo for the authenticated user. Date defaults to today in Asia/Seoul.")
+    async def create_todo(content: str, day: date | None = None, goal_id: str | None = None) -> dict:
+        return (await configured().create_todo(content, day or today(), goal_id)).model_dump(mode="json")
+
     return mcp
