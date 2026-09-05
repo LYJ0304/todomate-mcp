@@ -14,7 +14,7 @@ A Python MCP server that lists, creates, updates, completes, and deletes TodoMat
 uv sync
 ```
 
-Source code is in `src/todomate_mcp/` and tests are in `tests/`. Copy `.env.example` to a local `.env` file and configure its credentials. `.env` is excluded from Git.
+Source code is in `src/` and tests are in `tests/`. Copy `.env.example` to a local `.env` file and configure its credentials. `.env` is excluded from Git.
 
 ## Tests
 

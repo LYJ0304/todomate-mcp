@@ -6,7 +6,7 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from todomate_mcp.firebase_auth import AuthenticationError, FirebaseAuthSession
+from firebase_auth import AuthenticationError, FirebaseAuthSession
 
 
 def tokens(refresh=False, **changes):

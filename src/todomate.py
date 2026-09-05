@@ -5,9 +5,9 @@ import secrets
 import string
 from typing import Any
 
-from .firebase_auth import FirebaseAuthSession
-from .firestore import FirestoreClient, FirestoreError, JsonValue
-from .models import Todo, todo_from_document
+from firebase_auth import FirebaseAuthSession
+from firestore import FirestoreClient, FirestoreError, JsonValue
+from models import Todo, todo_from_document
 
 
 class TodoNotFoundError(LookupError):

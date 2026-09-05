@@ -1,1 +1,0 @@
-"""TodoMate MCP integration."""

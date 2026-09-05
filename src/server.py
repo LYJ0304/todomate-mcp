@@ -8,11 +8,11 @@ from typing import Any
 
 import httpx
 
-from .firebase_auth import AuthenticationError, FirebaseAuthSession
-from .firestore import FirestoreClient
-from .settings import RefreshTokenStore, load_auth_settings, load_environment
-from .todomate import TodoMateAdapter
-from .tools import create_server
+from firebase_auth import AuthenticationError, FirebaseAuthSession
+from firestore import FirestoreClient
+from settings import RefreshTokenStore, load_auth_settings, load_environment
+from todomate import TodoMateAdapter
+from tools import create_server
 
 
 class _ConfiguredAdapter:

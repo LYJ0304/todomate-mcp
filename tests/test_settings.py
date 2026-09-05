@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from todomate_mcp.settings import RefreshTokenStore, load_auth_settings, load_environment
+from settings import RefreshTokenStore, load_auth_settings, load_environment
 
 
 def test_local_dotenv_loads_refresh_token_without_password(tmp_path: Path):

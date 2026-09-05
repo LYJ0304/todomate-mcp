@@ -4,7 +4,7 @@ import json
 import httpx
 import pytest
 
-from todomate_mcp.firestore import FirestoreClient, FirestoreError, decode_fields, encode_fields
+from firestore import FirestoreClient, FirestoreError, decode_fields, encode_fields
 
 
 class Auth:
