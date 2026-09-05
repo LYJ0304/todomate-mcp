@@ -7,6 +7,7 @@ from typing import Any
 
 from .firebase_auth import FirebaseAuthSession
 from .firestore import FirestoreClient, FirestoreError, JsonValue
+from .models import Todo, todo_from_document
 
 
 class TodoNotFoundError(LookupError):
@@ -18,20 +19,20 @@ class TodoMateAdapter:
         self._auth = auth
         self._firestore = firestore
 
-    async def list_todos(self, day: date) -> list[dict[str, JsonValue]]:
+    async def list_todos(self, day: date) -> list[Todo]:
         todos = await self._firestore.query_equal(
             "TodoItem", {"writerID": self._auth.uid, "date": _day_millis(day)}
         )
-        return sorted(todos, key=lambda todo: _number(todo.get("createTime")))
+        return [todo_from_document(todo) for todo in sorted(todos, key=lambda todo: _number(todo.get("createTime")))]
 
-    async def get_todo(self, todo_id: str) -> dict[str, JsonValue]:
-        return await self._owned(todo_id)
+    async def get_todo(self, todo_id: str) -> Todo:
+        return todo_from_document(await self._owned(todo_id), fallback_id=todo_id)
 
-    async def create_todo(self, content: str, day: date, goal_id: str) -> dict[str, JsonValue]:
+    async def create_todo(self, content: str, day: date, goal_id: str) -> Todo:
         content, goal_id = _required(content, "content"), _required(goal_id, "goal_id")
         uid, now = self._auth.uid, _now_millis()
         todo_id = f"{uid}{''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(20))}"
-        return await self._firestore.upsert_document(
+        return todo_from_document(await self._firestore.upsert_document(
             f"TodoItem/{todo_id}",
             {
                 "id": todo_id,
@@ -55,11 +56,11 @@ class TodoMateAdapter:
                 "routineID": None,
                 "timer": None,
             },
-        )
+        ), fallback_id=todo_id)
 
     async def update_todo(
         self, todo_id: str, *, content: str | None = None, day: date | None = None, goal_id: str | None = None
-    ) -> dict[str, JsonValue]:
+    ) -> Todo:
         await self._owned(todo_id)
         fields: dict[str, JsonValue] = {}
         if content is not None:
@@ -70,14 +71,16 @@ class TodoMateAdapter:
             fields["goalID"] = _required(goal_id, "goal_id")
         if not fields:
             raise ValueError("At least one Todo field is required")
-        return await self._firestore.upsert_document(f"TodoItem/{todo_id}", fields, update_mask=list(fields))
+        document = await self._firestore.upsert_document(f"TodoItem/{todo_id}", fields, update_mask=list(fields))
+        return todo_from_document(document, fallback_id=todo_id)
 
-    async def complete_todo(self, todo_id: str, completed: bool = True) -> dict[str, JsonValue]:
+    async def complete_todo(self, todo_id: str, completed: bool = True) -> Todo:
         await self._owned(todo_id)
         fields: dict[str, JsonValue] = {"isDone": completed}
         if completed:
             fields["doneTime"] = _now_millis()
-        return await self._firestore.upsert_document(f"TodoItem/{todo_id}", fields, update_mask=list(fields))
+        document = await self._firestore.upsert_document(f"TodoItem/{todo_id}", fields, update_mask=list(fields))
+        return todo_from_document(document, fallback_id=todo_id)
 
     async def delete_todo(self, todo_id: str) -> None:
         await self._owned(todo_id)
