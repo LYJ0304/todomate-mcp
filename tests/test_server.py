@@ -6,6 +6,7 @@ from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from todomate_mcp.server import server
+from todomate_mcp.server import _ConfiguredAdapter
 from todomate_mcp.models import Todo
 from todomate_mcp.tools import create_server
 
@@ -67,4 +68,23 @@ def test_todo_tools_list_and_return_normalized_data():
             assert json.loads(updated.content[0].text)["content"] == "changed"
             assert json.loads(completed.content[0].text)["completed"] is False
             assert json.loads(deleted.content[0].text) == {"id": "one", "deleted": True}
+    asyncio.run(run())
+
+
+def test_configured_adapter_signs_in_once_before_the_first_operation():
+    async def run():
+        calls = []
+
+        class Auth:
+            async def sign_in(self, email, password):
+                calls.append((email, password))
+
+        class RawAdapter:
+            async def list_todos(self, day):
+                return [day]
+
+        adapter = _ConfiguredAdapter(Auth(), RawAdapter(), "me@example.com", "password")
+        assert await adapter.list_todos(__import__("datetime").date(2026, 9, 5))
+        assert await adapter.list_todos(__import__("datetime").date(2026, 9, 6))
+        assert calls == [("me@example.com", "password")]
     asyncio.run(run())
