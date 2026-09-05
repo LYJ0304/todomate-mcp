@@ -2,8 +2,10 @@ import asyncio
 import json
 from pathlib import Path
 
+import httpx
 from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamable_http_client
 
 from todomate_mcp.server import server
 from todomate_mcp.server import _ConfiguredAdapter
@@ -83,6 +85,39 @@ def test_mcp_rejects_invalid_tool_inputs():
                 ("delete_todo", {"todo_id": ""}),
             ]:
                 assert (await client.call_tool(name, arguments)).is_error is True
+    asyncio.run(run())
+
+
+def test_streamable_http_requires_a_bearer_token_and_lists_tools():
+    async def run():
+        mcp_server = create_server(
+            Adapter(),
+            today=lambda: __import__("datetime").date(2026, 9, 5),
+            access_token="secret",
+            resource_server_url="http://testserver/mcp",
+        )
+        app = mcp_server.streamable_http_app(host="testserver")
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+                response = await client.post("/mcp", json={})
+                assert response.status_code == 401
+                assert response.headers["www-authenticate"].startswith("Bearer ")
+
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://testserver",
+                headers={"Authorization": "Bearer secret"},
+            ) as http_client:
+                async with Client(streamable_http_client("http://testserver/mcp", http_client=http_client)) as client:
+                    assert {tool.name for tool in (await client.list_tools()).tools} == {
+                        "list_todos",
+                        "get_todo",
+                        "create_todo",
+                        "update_todo",
+                        "complete_todo",
+                        "delete_todo",
+                    }
+
     asyncio.run(run())
 
 

@@ -17,14 +17,19 @@ class AuthSettings:
 def load_auth_settings(
     path: Path = Path(".env"), environ: Mapping[str, str] | None = None
 ) -> AuthSettings | None:
-    values = _read_dotenv(path)
-    values.update({key: value for key, value in (environ or os.environ).items() if value})
+    values = load_environment(path, environ)
     api_key = values.get("TODOMATE_FIREBASE_API_KEY")
     refresh_token = values.get("TODOMATE_REFRESH_TOKEN")
     email, password = values.get("TODOMATE_EMAIL"), values.get("TODOMATE_PASSWORD")
     if not api_key or not (refresh_token or (email and password)):
         return None
     return AuthSettings(api_key, email, password, refresh_token)
+
+
+def load_environment(path: Path = Path(".env"), environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    values = _read_dotenv(path)
+    values.update({key: value for key, value in (environ or os.environ).items() if value})
+    return values
 
 
 class RefreshTokenStore:

@@ -2,9 +2,12 @@
 
 from collections.abc import Callable
 from datetime import date, datetime
+from secrets import compare_digest
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
+from mcp.server.auth.provider import AccessToken
+from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
@@ -13,10 +16,39 @@ from .todomate import TodoMateAdapter, TodoNotFoundError
 _TIME_ZONE = ZoneInfo("Asia/Seoul")
 
 
-def create_server(adapter: TodoMateAdapter | None, *, today: Callable[[], date] | None = None) -> MCPServer:
+class StaticTokenVerifier:
+    """Validate the single Bearer token used by the private HTTP endpoint."""
+
+    def __init__(self, access_token: str):
+        self._access_token = access_token
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        if not compare_digest(token, self._access_token):
+            return None
+        return AccessToken(token=token, client_id="todomate-mcp", scopes=[])
+
+
+def create_server(
+    adapter: TodoMateAdapter | None,
+    *,
+    today: Callable[[], date] | None = None,
+    access_token: str | None = None,
+    resource_server_url: str | None = None,
+) -> MCPServer:
+    if bool(access_token) != bool(resource_server_url):
+        raise ValueError("access_token and resource_server_url must be configured together")
+
+    auth = None
+    token_verifier = None
+    if access_token and resource_server_url:
+        auth = AuthSettings(issuer_url=resource_server_url, resource_server_url=resource_server_url)
+        token_verifier = StaticTokenVerifier(access_token)
+
     mcp = MCPServer(
         name="TodoMate",
         instructions="TodoMate todos. Dates without a value use today's date in Asia/Seoul.",
+        auth=auth,
+        token_verifier=token_verifier,
     )
     today = today or (lambda: datetime.now(_TIME_ZONE).date())
 
