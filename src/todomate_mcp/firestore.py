@@ -116,6 +116,32 @@ class FirestoreClient:
     async def delete_document(self, path: str) -> None:
         await self._request("delete", "DELETE", path)
 
+    async def query_equal(
+        self, collection_id: str, filters: Mapping[str, JsonValue]
+    ) -> list[dict[str, JsonValue]]:
+        if not collection_id or "/" in collection_id:
+            raise ValueError("Firestore collection ID must be a single segment")
+        clauses = [
+            {"fieldFilter": {"field": {"fieldPath": name}, "op": "EQUAL", "value": encode_value(value)}}
+            for name, value in filters.items()
+        ]
+        where: dict[str, Any] | None = None
+        if len(clauses) == 1:
+            where = clauses[0]
+        elif clauses:
+            where = {"compositeFilter": {"op": "AND", "filters": clauses}}
+        body: dict[str, Any] = {"structuredQuery": {"from": [{"collectionId": collection_id}]}}
+        if where is not None:
+            body["structuredQuery"]["where"] = where
+        response = await self._request("query", "POST", "", json=body, query=True)
+        try:
+            rows = response.json()
+            if not isinstance(rows, list):
+                raise ValueError
+            return [decode_fields(row["document"].get("fields", {})) for row in rows if isinstance(row, dict) and isinstance(row.get("document"), dict)]
+        except (KeyError, TypeError, ValueError):
+            raise FirestoreError("query", response.status_code) from None
+
     async def _request_document(self, operation: str, method: str, path: str, **kwargs: Any) -> dict[str, JsonValue]:
         response = await self._request(operation, method, path, **kwargs)
         try:
@@ -124,11 +150,11 @@ class FirestoreClient:
         except (AttributeError, TypeError, ValueError):
             raise FirestoreError(operation, response.status_code) from None
 
-    async def _request(self, operation: str, method: str, path: str, **kwargs: Any) -> httpx.Response:
+    async def _request(self, operation: str, method: str, path: str, *, query: bool = False, **kwargs: Any) -> httpx.Response:
         try:
             response = await self._client.request(
                 method,
-                self._document_url(path),
+                f"{self._base_url}:runQuery" if query else self._document_url(path),
                 headers={"Authorization": f"Bearer {await self._auth.id_token()}"},
                 **kwargs,
             )

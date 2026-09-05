@@ -43,6 +43,26 @@ def test_crud_uses_token_encodes_paths_masks_and_decodes_documents():
     asyncio.run(run())
 
 
+def test_query_equal_builds_a_structured_query_and_discards_progress_rows():
+    async def run():
+        seen = []
+
+        def handle(request):
+            seen.append(request)
+            return httpx.Response(200, json=[
+                {"readTime": "2026-01-01T00:00:00Z"},
+                {"document": {"fields": {"id": {"stringValue": "todo"}}}},
+            ])
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+            firestore = FirestoreClient(Auth(), http)
+            assert await firestore.query_equal("TodoItem", {"writerID": "user", "date": 1}) == [{"id": "todo"}]
+        body = json.loads(seen[0].content)
+        assert str(seen[0].url).endswith("/documents:runQuery")
+        assert body["structuredQuery"]["where"]["compositeFilter"]["op"] == "AND"
+    asyncio.run(run())
+
+
 def test_errors_are_classified_and_document_paths_are_validated():
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(403))) as http:
