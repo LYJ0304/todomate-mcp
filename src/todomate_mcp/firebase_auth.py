@@ -56,6 +56,12 @@ class FirebaseAuthSession:
             raise AuthenticationError("session", "not_signed_in")
         return self._token.uid
 
+    @property
+    def refresh_token(self) -> str:
+        if self._token is None:
+            raise AuthenticationError("session", "not_signed_in")
+        return self._token.refresh_token
+
     async def sign_in(self, email: str, password: str) -> None:
         if not all(isinstance(value, str) and value.strip() for value in (email, password)):
             raise AuthenticationError("sign_in", "invalid_input")
@@ -66,15 +72,28 @@ class FirebaseAuthSession:
                 "sign_in", {"email": email, "password": password, "returnSecureToken": True}
             )
 
+    async def restore(self, refresh_token: str) -> None:
+        if not isinstance(refresh_token, str) or not refresh_token.strip():
+            raise AuthenticationError("refresh", "invalid_input")
+        async with self._lock:
+            self._token = None
+            self._token = await self._request(
+                "refresh", {"grant_type": "refresh_token", "refresh_token": refresh_token}
+            )
+
     async def id_token(self) -> str:
         async with self._lock:
             if self._token is None:
                 raise AuthenticationError("session", "not_signed_in")
             if self._token.expires_at - self._clock() <= 60:
-                self._token = await self._request(
-                    "refresh",
-                    {"grant_type": "refresh_token", "refresh_token": self._token.refresh_token},
-                )
+                try:
+                    self._token = await self._request(
+                        "refresh",
+                        {"grant_type": "refresh_token", "refresh_token": self._token.refresh_token},
+                    )
+                except AuthenticationError:
+                    self._token = None
+                    raise
             return self._token.id_token
 
     async def _request(

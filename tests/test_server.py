@@ -7,6 +7,7 @@ from mcp.client.stdio import stdio_client
 
 from todomate_mcp.server import server
 from todomate_mcp.server import _ConfiguredAdapter
+from todomate_mcp.firebase_auth import AuthenticationError
 from todomate_mcp.models import Todo
 from todomate_mcp.tools import create_server
 
@@ -76,6 +77,8 @@ def test_configured_adapter_signs_in_once_before_the_first_operation():
         calls = []
 
         class Auth:
+            refresh_token = "rotated"
+
             async def sign_in(self, email, password):
                 calls.append((email, password))
 
@@ -83,8 +86,41 @@ def test_configured_adapter_signs_in_once_before_the_first_operation():
             async def list_todos(self, day):
                 return [day]
 
-        adapter = _ConfiguredAdapter(Auth(), RawAdapter(), "me@example.com", "password")
+        class Store:
+            def save(self, token):
+                calls.append(("store", token))
+
+        auth = Auth()
+
+        async def authenticate():
+            await auth.sign_in("me@example.com", "password")
+
+        adapter = _ConfiguredAdapter(auth, RawAdapter(), authenticate, Store())
         assert await adapter.list_todos(__import__("datetime").date(2026, 9, 5))
         assert await adapter.list_todos(__import__("datetime").date(2026, 9, 6))
-        assert calls == [("me@example.com", "password")]
+        assert calls == [
+            ("me@example.com", "password"),
+            ("store", "rotated"),
+            ("store", "rotated"),
+            ("store", "rotated"),
+        ]
+    asyncio.run(run())
+
+
+def test_rejected_refresh_token_requires_reauthentication():
+    async def run():
+        class Auth:
+            refresh_token = "old"
+
+        class Store:
+            def save(self, token):
+                raise AssertionError("must not save a rejected token")
+
+        async def authenticate():
+            raise AuthenticationError("refresh", "http_error", status_code=400)
+
+        adapter = _ConfiguredAdapter(Auth(), object(), authenticate, Store())
+        with __import__("pytest").raises(AuthenticationError) as caught:
+            await adapter.list_todos(__import__("datetime").date(2026, 9, 5))
+        assert (caught.value.operation, caught.value.reason) == ("session", "reauthentication_required")
     asyncio.run(run())
