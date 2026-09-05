@@ -1,5 +1,6 @@
 """TodoMate MCP server entry point."""
 
+import argparse
 import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import date
@@ -9,7 +10,7 @@ import httpx
 
 from .firebase_auth import AuthenticationError, FirebaseAuthSession
 from .firestore import FirestoreClient
-from .settings import RefreshTokenStore, load_auth_settings
+from .settings import RefreshTokenStore, load_auth_settings, load_environment
 from .todomate import TodoMateAdapter
 from .tools import create_server
 
@@ -89,4 +90,23 @@ server = create_server(_adapter_from_environment())
 
 
 def main() -> None:
-    server.run(transport="stdio")
+    environment = load_environment()
+    parser = argparse.ArgumentParser(description="Run the TodoMate MCP server.")
+    parser.add_argument("transport", choices=("stdio", "http"), nargs="?", default="stdio")
+    parser.add_argument("--host", default=environment.get("TODOMATE_MCP_HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(environment.get("TODOMATE_MCP_PORT", "8000")))
+    args = parser.parse_args()
+
+    if args.transport == "stdio":
+        server.run(transport="stdio")
+        return
+
+    access_token = environment.get("TODOMATE_MCP_ACCESS_TOKEN")
+    if not access_token:
+        parser.error("TODOMATE_MCP_ACCESS_TOKEN is required for HTTP transport")
+    resource_server_url = environment.get("TODOMATE_MCP_PUBLIC_URL", f"http://{args.host}:{args.port}/mcp")
+    create_server(
+        _adapter_from_environment(),
+        access_token=access_token,
+        resource_server_url=resource_server_url,
+    ).run(transport="streamable-http", host=args.host, port=args.port, streamable_http_path="/mcp")
