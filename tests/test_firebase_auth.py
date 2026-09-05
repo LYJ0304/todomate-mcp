@@ -123,3 +123,21 @@ def test_not_signed_in_and_failed_account_switch():
             with pytest.raises(AuthenticationError, match='not_signed_in'):
                 await session.id_token()
     asyncio.run(run())
+
+
+def test_restore_uses_refresh_token_without_password_and_updates_state():
+    async def run():
+        seen = []
+
+        def handle(request):
+            seen.append(parse_qs(request.content.decode()))
+            return httpx.Response(200, json=tokens(True))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            session = FirebaseAuthSession("api-key", client)
+            await session.restore("stored-refresh-secret")
+            assert await session.id_token() == "new-secret"
+            assert session.uid == "user"
+            assert session.refresh_token == "rotated-secret"
+        assert seen == [{"grant_type": ["refresh_token"], "refresh_token": ["stored-refresh-secret"]}]
+    asyncio.run(run())

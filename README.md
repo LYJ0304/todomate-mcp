@@ -1,6 +1,6 @@
 # todomate-mcp
 
-Todomate MCP 서버 개발을 위한 Python 프로젝트입니다. Firebase 로그인과 메모리 내 토큰 갱신을 구현했으며, MCP 서버와 Todo 기능은 아직 구현하지 않았습니다.
+TodoMate의 Firestore Todo를 조회·생성·수정·완료·삭제하는 Python MCP 서버입니다.
 
 ## 개발 환경
 
@@ -15,8 +15,7 @@ uv sync
 ```
 
 소스 코드는 `src/todomate_mcp/`, 테스트는 `tests/`에 작성합니다.
-환경 변수가 필요해지면 `.env.example`을 참고해 `.env`를 만듭니다.
-현재는 환경 변수가 필요하지 않으며, `.env` 자동 로딩도 구성하지 않았습니다.
+`.env.example`을 복사해 로컬 `.env`를 만들고 인증값을 설정합니다. `.env`는 Git에서 제외됩니다.
 
 ## 테스트
 
@@ -34,6 +33,6 @@ Firebase 인증 테스트는 HTTP 응답을 mock으로 제공하므로 실제 �
 uv run todomate-mcp
 ```
 
-`list_todos(day?)`와 `get_todo(todo_id)`를 지원합니다. `day`를 생략하면 `Asia/Seoul`의 오늘을 사용합니다.
+`list_todos`, `get_todo`, `create_todo`, `update_todo`, `complete_todo`, `delete_todo`를 지원합니다. 날짜를 생략하면 `Asia/Seoul`의 오늘을 사용합니다.
 
-실제 TodoMate 계정에 연결하려면 실행 환경에 `TODOMATE_FIREBASE_API_KEY`, `TODOMATE_EMAIL`, `TODOMATE_PASSWORD`를 설정합니다. 인증값을 저장소에 넣지 마세요.
+처음에는 `TODOMATE_FIREBASE_API_KEY`, `TODOMATE_EMAIL`, `TODOMATE_PASSWORD`를 설정합니다. 성공한 요청 뒤에는 refresh token이 로컬 `.env`에 저장되어 다음 실행부터 비밀번호 없이 세션을 복원합니다. 실행 환경 변수는 `.env` 값을 우선합니다. 인증값을 저장소에 넣지 마세요.

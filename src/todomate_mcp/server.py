@@ -1,25 +1,31 @@
 """TodoMate MCP server entry point."""
 
 import asyncio
-import os
 from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
 import httpx
 
-from .firebase_auth import FirebaseAuthSession
+from .firebase_auth import AuthenticationError, FirebaseAuthSession
 from .firestore import FirestoreClient
+from .settings import RefreshTokenStore, load_auth_settings
 from .todomate import TodoMateAdapter
 from .tools import create_server
 
 
 class _ConfiguredAdapter:
-    def __init__(self, auth: FirebaseAuthSession, adapter: TodoMateAdapter, email: str, password: str):
+    def __init__(
+        self,
+        auth: FirebaseAuthSession,
+        adapter: TodoMateAdapter,
+        authenticate: Callable[[], Awaitable[None]],
+        token_store: RefreshTokenStore,
+    ):
         self._auth = auth
         self._adapter = adapter
-        self._email = email
-        self._password: str | None = password
+        self._authenticate: Callable[[], Awaitable[None]] | None = authenticate
+        self._token_store = token_store
         self._login_lock = asyncio.Lock()
 
     async def list_todos(self, day: date) -> Any:
@@ -41,23 +47,42 @@ class _ConfiguredAdapter:
         await self._call(lambda: self._adapter.delete_todo(todo_id))
 
     async def _call(self, operation: Callable[[], Awaitable[Any]]) -> Any:
-        if self._password is not None:
+        if self._authenticate is not None:
             async with self._login_lock:
-                if self._password is not None:
-                    await self._auth.sign_in(self._email, self._password)
-                    self._password = None
-        return await operation()
+                if self._authenticate is not None:
+                    try:
+                        await self._authenticate()
+                    except AuthenticationError as error:
+                        raise _reauthentication_error(error) from None
+                    self._authenticate = None
+                    self._token_store.save(self._auth.refresh_token)
+        try:
+            result = await operation()
+        except AuthenticationError as error:
+            raise _reauthentication_error(error) from None
+        self._token_store.save(self._auth.refresh_token)
+        return result
 
 
 def _adapter_from_environment() -> _ConfiguredAdapter | None:
-    api_key = os.environ.get("TODOMATE_FIREBASE_API_KEY")
-    email = os.environ.get("TODOMATE_EMAIL")
-    password = os.environ.get("TODOMATE_PASSWORD")
-    if not all((api_key, email, password)):
+    settings = load_auth_settings()
+    if settings is None:
         return None
     client = httpx.AsyncClient()
-    auth = FirebaseAuthSession(api_key, client)
-    return _ConfiguredAdapter(auth, TodoMateAdapter(auth, FirestoreClient(auth, client)), email, password)
+    auth = FirebaseAuthSession(settings.api_key, client)
+    if settings.refresh_token:
+        authenticate = lambda: auth.restore(settings.refresh_token or "")
+    else:
+        authenticate = lambda: auth.sign_in(settings.email or "", settings.password or "")
+    return _ConfiguredAdapter(
+        auth, TodoMateAdapter(auth, FirestoreClient(auth, client)), authenticate, RefreshTokenStore()
+    )
+
+
+def _reauthentication_error(error: AuthenticationError) -> AuthenticationError:
+    if error.operation == "refresh" and error.status_code in {400, 401}:
+        return AuthenticationError("session", "reauthentication_required", status_code=error.status_code)
+    return error
 
 
 server = create_server(_adapter_from_environment())
