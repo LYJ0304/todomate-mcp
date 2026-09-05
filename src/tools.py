@@ -11,7 +11,7 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from .todomate import TodoMateAdapter, TodoNotFoundError
+from todomate import TodoMateAdapter, TodoNotFoundError
 
 _TIME_ZONE = ZoneInfo("Asia/Seoul")
 

@@ -14,7 +14,7 @@ TodoMate의 Firestore Todo를 조회·생성·수정·완료·삭제하는 Pytho
 uv sync
 ```
 
-소스 코드는 `src/todomate_mcp/`, 테스트는 `tests/`에 작성합니다.
+소스 코드는 `src/`, 테스트는 `tests/`에 작성합니다.
 `.env.example`을 복사해 로컬 `.env`를 만들고 인증값을 설정합니다. `.env`는 Git에서 제외됩니다.
 
 ## 테스트

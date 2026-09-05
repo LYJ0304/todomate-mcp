@@ -3,8 +3,8 @@ from datetime import date
 
 import pytest
 
-from todomate_mcp.firestore import FirestoreError
-from todomate_mcp.todomate import TodoMateAdapter, TodoNotFoundError
+from firestore import FirestoreError
+from todomate import TodoMateAdapter, TodoNotFoundError
 
 
 class Auth:

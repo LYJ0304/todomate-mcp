@@ -8,11 +8,11 @@ from typing import Any
 
 import httpx
 
-from .firebase_auth import AuthenticationError, FirebaseAuthSession
-from .firestore import FirestoreClient
-from .settings import RefreshTokenStore, load_auth_settings, load_environment
-from .todomate import TodoMateAdapter
-from .tools import create_server
+from firebase_auth import AuthenticationError, FirebaseAuthSession
+from firestore import FirestoreClient
+from settings import RefreshTokenStore, load_auth_settings, load_environment
+from todomate import TodoMateAdapter
+from tools import create_server
 
 
 class _ConfiguredAdapter:
@@ -85,28 +85,41 @@ def _reauthentication_error(error: AuthenticationError) -> AuthenticationError:
         return AuthenticationError("session", "reauthentication_required", status_code=error.status_code)
     return error
 
-
-server = create_server(_adapter_from_environment())
-
-
 def main() -> None:
     environment = load_environment()
+
     parser = argparse.ArgumentParser(description="Run the TodoMate MCP server.")
     parser.add_argument("transport", choices=("stdio", "http"), nargs="?", default="stdio")
     parser.add_argument("--host", default=environment.get("TODOMATE_MCP_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(environment.get("TODOMATE_MCP_PORT", "8000")))
     args = parser.parse_args()
 
+    adapter = _adapter_from_environment()
+
     if args.transport == "stdio":
+        server = create_server(adapter)
         server.run(transport="stdio")
         return
 
     access_token = environment.get("TODOMATE_MCP_ACCESS_TOKEN")
     if not access_token:
-        parser.error("TODOMATE_MCP_ACCESS_TOKEN is required for HTTP transport")
-    resource_server_url = environment.get("TODOMATE_MCP_PUBLIC_URL", f"http://{args.host}:{args.port}/mcp")
-    create_server(
-        _adapter_from_environment(),
+        parser.error(
+            "TODOMATE_MCP_ACCESS_TOKEN is required for HTTP transport"
+            )
+
+    resource_server_url = environment.get(
+        "TODOMATE_MCP_PUBLIC_URL", 
+        f"http://{args.host}:{args.port}/mcp"
+        )
+
+    server = create_server(
+        adapter,
         access_token=access_token,
         resource_server_url=resource_server_url,
-    ).run(transport="streamable-http", host=args.host, port=args.port, streamable_http_path="/mcp")
+    )
+    server.run(
+        transport="streamable-http", 
+        host=args.host, 
+        port=args.port, 
+        streamable_http_path="/mcp"
+        )

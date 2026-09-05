@@ -7,16 +7,15 @@ from mcp import Client, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamable_http_client
 
-from todomate_mcp.server import server
-from todomate_mcp.server import _ConfiguredAdapter
-from todomate_mcp.firebase_auth import AuthenticationError
-from todomate_mcp.models import Todo
-from todomate_mcp.tools import create_server
+from server import _ConfiguredAdapter
+from firebase_auth import AuthenticationError
+from models import Todo
+from tools import create_server
 
 
 def test_server_initializes_and_lists_tools():
     async def run():
-        async with Client(server) as client:
+        async with Client(create_server(None)) as client:
             assert {tool.name for tool in (await client.list_tools()).tools} == {"list_todos", "get_todo", "create_todo", "update_todo", "complete_todo", "delete_todo"}
     asyncio.run(run())
 

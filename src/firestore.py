@@ -7,7 +7,7 @@ from urllib.parse import quote
 
 import httpx
 
-from .firebase_auth import FirebaseAuthSession
+from firebase_auth import FirebaseAuthSession
 
 JsonValue = None | bool | float | int | str | list["JsonValue"] | dict[str, "JsonValue"]
 

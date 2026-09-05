@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .firestore import JsonValue
+from firestore import JsonValue
 
 
 class Todo(BaseModel):

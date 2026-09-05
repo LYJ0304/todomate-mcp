@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from todomate_mcp.models import Todo, todo_from_document
+from models import Todo, todo_from_document
 
 
 def test_todo_normalizes_firestore_fields():
