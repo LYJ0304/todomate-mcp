@@ -38,4 +38,20 @@ def create_server(adapter: TodoMateAdapter | None, *, today: Callable[[], date] 
     async def create_todo(content: str, day: date | None = None, goal_id: str | None = None) -> dict:
         return (await configured().create_todo(content, day or today(), goal_id)).model_dump(mode="json")
 
+    @mcp.tool(description="Update provided fields of one authenticated user's todo.")
+    async def update_todo(
+        todo_id: str, content: str | None = None, day: date | None = None, goal_id: str | None = None
+    ) -> dict:
+        try:
+            return (await configured().update_todo(todo_id, content=content, day=day, goal_id=goal_id)).model_dump(mode="json")
+        except TodoNotFoundError:
+            raise ValueError("Todo not found") from None
+
+    @mcp.tool(description="Mark one authenticated user's todo complete or incomplete.")
+    async def complete_todo(todo_id: str, completed: bool = True) -> dict:
+        try:
+            return (await configured().complete_todo(todo_id, completed)).model_dump(mode="json")
+        except TodoNotFoundError:
+            raise ValueError("Todo not found") from None
+
     return mcp
