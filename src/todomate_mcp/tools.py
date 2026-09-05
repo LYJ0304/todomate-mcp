@@ -54,4 +54,12 @@ def create_server(adapter: TodoMateAdapter | None, *, today: Callable[[], date] 
         except TodoNotFoundError:
             raise ValueError("Todo not found") from None
 
+    @mcp.tool(description="Delete one authenticated user's todo by ID.")
+    async def delete_todo(todo_id: str) -> dict:
+        try:
+            await configured().delete_todo(todo_id)
+            return {"id": todo_id, "deleted": True}
+        except TodoNotFoundError:
+            raise ValueError("Todo not found") from None
+
     return mcp
